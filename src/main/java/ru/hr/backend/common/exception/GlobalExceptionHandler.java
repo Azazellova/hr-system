@@ -109,4 +109,16 @@ public class GlobalExceptionHandler {
 
         return response;
     }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleIllegalState(
+            IllegalStateException exception
+    ) {
+        return response(
+                409,
+                "Conflict",
+                exception.getMessage()
+        );
+    }
 }

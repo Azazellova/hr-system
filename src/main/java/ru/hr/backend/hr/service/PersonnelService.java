@@ -7,6 +7,9 @@ import ru.hr.backend.employee.dto.EmployeeRequest;
 import ru.hr.backend.employee.dto.EmployeeResponse;
 import ru.hr.backend.employee.service.EmployeeService;
 import ru.hr.backend.hr.event.PersonnelEvent;
+import ru.hr.backend.department.service.OrganizationService;
+import ru.hr.backend.department.dto.DepartmentResponse;
+import ru.hr.backend.department.dto.PositionResponse;
 import ru.hr.backend.hr.state.EmploymentState;
 import ru.hr.backend.hr.state.EmploymentStates;
 
@@ -17,10 +20,35 @@ import java.time.LocalDate;
 public class PersonnelService {
     private final EmployeeService employeeService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OrganizationService organizationService;
 
-    public PersonnelService(EmployeeService employeeService, ApplicationEventPublisher eventPublisher) {
+    public PersonnelService(EmployeeService employeeService, ApplicationEventPublisher eventPublisher,
+                            OrganizationService organizationService) {
         this.employeeService = employeeService;
         this.eventPublisher = eventPublisher;
+        this.organizationService = organizationService;
+    }
+
+    @Transactional
+    public EmployeeResponse transfer(Long employeeId, Long departmentId, Long positionId, String reason) {
+        EmployeeResponse current = employeeService.getEmployeeById(employeeId);
+        EmploymentState state = EmploymentStates.from(current.getEmploymentStatus(), current.getIsActive());
+        if ("DISMISSED".equalsIgnoreCase(state.status())) {
+            throw new IllegalStateException("Нельзя перевести уволенного сотрудника");
+        }
+
+        DepartmentResponse department = organizationService.getDepartment(departmentId);
+        PositionResponse position = organizationService.getPosition(positionId);
+        if (!position.departmentId().equals(department.id())) {
+            throw new IllegalArgumentException("Указанная должность не относится к выбранному подразделению");
+        }
+
+        EmployeeRequest request = toRequest(current);
+        request.setDepartmentId(departmentId);
+        request.setPositionId(positionId);
+        EmployeeResponse updated = employeeService.updateEmployee(employeeId, request);
+        publish(employeeId, "TRANSFER", updated.getEmploymentStatus(), reason);
+        return updated;
     }
 
     @Transactional
