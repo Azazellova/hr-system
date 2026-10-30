@@ -6,18 +6,22 @@ import ru.hr.backend.common.exception.ResourceNotFoundException;
 import ru.hr.backend.department.dto.DepartmentResponse;
 import ru.hr.backend.department.dto.PositionResponse;
 import ru.hr.backend.department.service.OrganizationService;
-import ru.hr.backend.employee.dto.EmployeeRequest;
-import ru.hr.backend.employee.dto.EmployeeResponse;
 import ru.hr.backend.employee.service.EmployeeService;
 import ru.hr.backend.hr.dto.HrRequestCreate;
 import ru.hr.backend.hr.entity.HrRequest;
 import ru.hr.backend.hr.entity.HrRequestStatus;
 import ru.hr.backend.hr.entity.HrRequestType;
 import ru.hr.backend.hr.repository.HrRequestRepository;
-
+import ru.hr.backend.hr.strategy.HrRequestStrategy;
+import ru.hr.backend.hr.strategy.HrRequestStrategyFactory;
 import java.time.LocalDate;
 import java.util.List;
-
+import ru.hr.backend.hr.dto.HiringRequestCreate;
+import ru.hr.backend.hr.dto.TransferRequestCreate;
+import ru.hr.backend.hr.dto.IncreaseRequestCreate;
+import ru.hr.backend.hr.dto.DismissalRequestCreate;
+import ru.hr.backend.hr.dto.VacationRequestCreate;
+import ru.hr.backend.hr.dto.SickLeaveRequestCreate;
 @Service
 public class HrRequestService {
 
@@ -25,17 +29,20 @@ public class HrRequestService {
     private final EmployeeService employeeService;
     private final OrganizationService organizationService;
     private final PersonnelService personnelService;
+    private final HrRequestStrategyFactory strategyFactory;
 
     public HrRequestService(
             HrRequestRepository repository,
             EmployeeService employeeService,
             OrganizationService organizationService,
-            PersonnelService personnelService
+            PersonnelService personnelService,
+            HrRequestStrategyFactory strategyFactory
     ) {
         this.repository = repository;
         this.employeeService = employeeService;
         this.organizationService = organizationService;
         this.personnelService = personnelService;
+        this.strategyFactory = strategyFactory;
     }
 
     @Transactional
@@ -88,6 +95,149 @@ public class HrRequestService {
         return repository.save(request);
     }
 
+    @Transactional
+    public HrRequest createHiring(HiringRequestCreate input) {
+        validateReason(input.getReason());
+
+        DepartmentResponse department =
+                organizationService.getDepartment(input.getDepartmentId());
+
+        PositionResponse position =
+                organizationService.getPosition(input.getPositionId());
+
+        validatePositionDepartment(position, department);
+
+        if (!input.getBirthDate().isBefore(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Дата рождения кандидата должна быть в прошлом"
+            );
+        }
+
+        if (input.getAddress() == null || input.getAddress().isBlank()) {
+            throw new IllegalArgumentException(
+                    "Для приема необходимо указать адрес кандидата"
+            );
+        }
+
+        if (input.getStartDate().isAfter(LocalDate.now())) {
+            throw new IllegalArgumentException(
+                    "Дата приема не может быть в будущем"
+            );
+        }
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.HIRING);
+        request.setDepartmentId(input.getDepartmentId());
+        request.setPositionId(input.getPositionId());
+
+        request.setLastName(input.getLastName().trim());
+        request.setFirstName(input.getFirstName().trim());
+        request.setMiddleName(cleanOptional(input.getMiddleName()));
+        request.setBirthDate(input.getBirthDate());
+        request.setPhone(input.getPhone().trim());
+        request.setEmail(cleanOptional(input.getEmail()));
+        request.setAddress(cleanOptional(input.getAddress()));
+        request.setWorkSchedule(cleanOptional(input.getWorkSchedule()));
+
+        request.setStartDate(input.getStartDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+    @Transactional
+    public HrRequest createTransfer(TransferRequestCreate input) {
+        validateReason(input.getReason());
+        validateEmployee(input.getEmployeeId());
+
+        DepartmentResponse department =
+                organizationService.getDepartment(input.getDepartmentId());
+
+        PositionResponse position =
+                organizationService.getPosition(input.getPositionId());
+
+        validatePositionDepartment(position, department);
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.TRANSFER);
+        request.setEmployeeId(input.getEmployeeId());
+        request.setDepartmentId(input.getDepartmentId());
+        request.setPositionId(input.getPositionId());
+        request.setStartDate(input.getStartDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+    @Transactional
+    public HrRequest createIncrease(IncreaseRequestCreate input) {
+        validateReason(input.getReason());
+        validateEmployee(input.getEmployeeId());
+        organizationService.getPosition(input.getPositionId());
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.INCREASE);
+        request.setEmployeeId(input.getEmployeeId());
+        request.setPositionId(input.getPositionId());
+        request.setStartDate(input.getStartDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+    @Transactional
+    public HrRequest createDismissal(DismissalRequestCreate input) {
+        validateReason(input.getReason());
+        validateEmployee(input.getEmployeeId());
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.DISMISSAL);
+        request.setEmployeeId(input.getEmployeeId());
+        request.setStartDate(input.getStartDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+    @Transactional
+    public HrRequest createVacation(VacationRequestCreate input) {
+        validateReason(input.getReason());
+        validateEmployee(input.getEmployeeId());
+        validatePeriod(input.getStartDate(), input.getEndDate());
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.VACATION);
+        request.setEmployeeId(input.getEmployeeId());
+        request.setStartDate(input.getStartDate());
+        request.setEndDate(input.getEndDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+    @Transactional
+    public HrRequest createSickLeave(SickLeaveRequestCreate input) {
+        validateReason(input.getReason());
+        validateEmployee(input.getEmployeeId());
+        validatePeriod(input.getStartDate(), input.getEndDate());
+
+        HrRequest request = new HrRequest();
+        request.setType(HrRequestType.SICK_LEAVE);
+        request.setEmployeeId(input.getEmployeeId());
+        request.setStartDate(input.getStartDate());
+        request.setEndDate(input.getEndDate());
+        request.setReason(input.getReason().trim());
+        request.setStatus(HrRequestStatus.PENDING);
+
+        return repository.save(request);
+    }
+
+
     @Transactional(readOnly = true)
     public List<HrRequest> getAll() {
         return repository.findAll();
@@ -109,37 +259,17 @@ public class HrRequestService {
 
     @Transactional
     public HrRequest approve(Long id) {
+
         HrRequest request = getById(id);
+
         checkPending(request);
 
-        switch (request.getType()) {
-            case HIRING:
-                hireEmployee(request);
-                request.setStatus(HrRequestStatus.COMPLETED);
-                break;
+        HrRequestStrategy strategy =
+                strategyFactory.getStrategy(request.getType());
 
-            case TRANSFER:
-                personnelService.transfer(request.getEmployeeId(), request.getDepartmentId(),
-                        request.getPositionId(), request.getReason());
-                request.setStatus(HrRequestStatus.COMPLETED);
-                break;
+        strategy.approve(request);
 
-            case DISMISSAL:
-                personnelService.dismiss(request.getEmployeeId(), request.getReason());
-                request.setStatus(HrRequestStatus.COMPLETED);
-                break;
-
-            case VACATION:
-            case SICK_LEAVE:
-                // Сама заявка с датами является записью об отсутствии в hr_requests.
-                request.setStatus(HrRequestStatus.COMPLETED);
-                break;
-
-            case INCREASE:
-                // В модели сотрудника нет поля оклада, поэтому размер повышения хранить негде.
-                request.setStatus(HrRequestStatus.APPROVED);
-                break;
-        }
+        request.setStatus(HrRequestStatus.COMPLETED);
 
         return repository.save(request);
     }
@@ -154,29 +284,58 @@ public class HrRequestService {
         return repository.save(request);
     }
 
-    private void hireEmployee(HrRequest request) {
-        EmployeeRequest employee = new EmployeeRequest();
-        employee.setLastName(request.getLastName());
-        employee.setFirstName(request.getFirstName());
-        employee.setMiddleName(request.getMiddleName());
-        employee.setBirthDate(request.getBirthDate());
-        employee.setPhone(request.getPhone());
-        employee.setEmail(request.getEmail());
-        employee.setAddress(request.getAddress());
-        employee.setDepartmentId(request.getDepartmentId());
-        employee.setPositionId(request.getPositionId());
-        employee.setEmploymentDate(request.getStartDate() == null
-                ? LocalDate.now() : request.getStartDate());
-        employee.setWorkSchedule(request.getWorkSchedule());
-        employee.setIsActive(true);
-
-        EmployeeResponse created = employeeService.createEmployee(employee);
-        request.setEmployeeId(created.getEmployeeId());
-    }
 
     private String cleanOptional(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
+
+    private void validateReason(String reason) {
+        if (reason == null || reason.isBlank()) {
+            throw new IllegalArgumentException("Основание заявки обязательно");
+        }
+
+        if (reason.length() > 500) {
+            throw new IllegalArgumentException(
+                    "Основание не должно превышать 500 символов"
+            );
+        }
+    }
+
+    private void validateEmployee(Long employeeId) {
+        if (employeeId == null || employeeId <= 0) {
+            throw new IllegalArgumentException(
+                    "Необходимо указать корректный ID сотрудника"
+            );
+        }
+
+        employeeService.getEmployeeById(employeeId);
+    }
+
+    private void validatePeriod(LocalDate startDate, LocalDate endDate) {
+        if (startDate == null || endDate == null) {
+            throw new IllegalArgumentException(
+                    "Необходимо указать дату начала и окончания периода"
+            );
+        }
+
+        if (endDate.isBefore(startDate)) {
+            throw new IllegalArgumentException(
+                    "Дата окончания не может быть раньше даты начала"
+            );
+        }
+    }
+
+    private void validatePositionDepartment(
+            PositionResponse position,
+            DepartmentResponse department
+    ) {
+        if (!position.departmentId().equals(department.id())) {
+            throw new IllegalArgumentException(
+                    "Указанная должность не относится к выбранному подразделению"
+            );
+        }
+    }
+
 
     private void checkPending(HrRequest request) {
         if (request.getStatus() != HrRequestStatus.PENDING) {

@@ -118,4 +118,60 @@ public class PersonnelService {
         request.setIsActive(source.getIsActive());
         return request;
     }
+
+
+    @Transactional
+    public EmployeeResponse increase(
+            Long employeeId,
+            Long positionId,
+            String reason
+    ) {
+        // Получаем текущие данные сотрудника
+        EmployeeResponse current =
+                employeeService.getEmployeeById(employeeId);
+
+        // Проверяем, что сотрудник не уволен
+        EmploymentState state = EmploymentStates.from(
+                current.getEmploymentStatus(),
+                current.getIsActive()
+        );
+
+        if ("DISMISSED".equalsIgnoreCase(state.status())) {
+            throw new IllegalStateException(
+                    "Нельзя повысить уволенного сотрудника"
+            );
+        }
+
+        // Получаем новую должность
+        PositionResponse position =
+                organizationService.getPosition(positionId);
+
+        // Проверяем, что новая должность находится
+        // в текущем подразделении сотрудника
+        if (!position.departmentId().equals(current.getDepartmentId())) {
+            throw new IllegalArgumentException(
+                    "При повышении подразделение сотрудника не должно изменяться"
+            );
+        }
+
+        // Сохраняем все прежние данные сотрудника
+        EmployeeRequest request = toRequest(current);
+
+        // Меняем только должность
+        request.setPositionId(positionId);
+
+        EmployeeResponse updated =
+                employeeService.updateEmployee(employeeId, request);
+
+        // Публикуем отдельное событие повышения
+        publish(
+                employeeId,
+                "INCREASE",
+                updated.getEmploymentStatus(),
+                reason
+        );
+
+        return updated;
+    }
+
 }
