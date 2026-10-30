@@ -23,6 +23,11 @@ public class DepartmentController {
         return service.createDepartment(request);
     }
 
+    @GetMapping("/tree")
+    public List<ru.hr.backend.department.composite.OrganizationTreeResponse> getTree() {
+        return service.getOrganizationTree();
+    }
+
     @GetMapping
     public List<DepartmentResponse> getAll() {
         return service.getDepartments();

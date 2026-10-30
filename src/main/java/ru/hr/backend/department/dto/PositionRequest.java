@@ -12,8 +12,5 @@ public record PositionRequest(
 
     @NotNull(message = "departmentId обязателен")
     @Positive(message = "departmentId должен быть положительным числом")
-    Long departmentId,
-
-    @Positive(message = "employeeId должен быть положительным числом")
-    Long employeeId
+    Long departmentId
 ) {}

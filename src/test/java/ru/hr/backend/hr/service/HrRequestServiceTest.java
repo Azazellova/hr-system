@@ -8,6 +8,8 @@ import ru.hr.backend.hr.entity.HrRequest;
 import ru.hr.backend.hr.entity.HrRequestStatus;
 import ru.hr.backend.hr.entity.HrRequestType;
 import ru.hr.backend.hr.repository.HrRequestRepository;
+import ru.hr.backend.document.service.DocumentService;
+import ru.hr.backend.hr.strategy.HrRequestStrategyFactory;
 
 import java.time.LocalDate;
 import java.util.Optional;
@@ -21,6 +23,9 @@ class HrRequestServiceTest {
     private OrganizationService organizationService;
     private PersonnelService personnelService;
     private HrRequestService service;
+    private DocumentService documentService;
+    private HrRequestStrategyFactory strategyFactory;
+    private HiringDocumentCoordinator hiringDocumentCoordinator;
 
     @BeforeEach
     void setUp() {
@@ -28,7 +33,18 @@ class HrRequestServiceTest {
         employeeService = mock(EmployeeService.class);
         organizationService = mock(OrganizationService.class);
         personnelService = mock(PersonnelService.class);
-        service = new HrRequestService(repository, employeeService, organizationService, personnelService);
+
+        strategyFactory = mock(HrRequestStrategyFactory.class);
+        hiringDocumentCoordinator = mock(HiringDocumentCoordinator.class);
+
+        service = new HrRequestService(
+                repository,
+                employeeService,
+                organizationService,
+                personnelService,
+                strategyFactory,
+                hiringDocumentCoordinator
+        );
     }
 
     @Test

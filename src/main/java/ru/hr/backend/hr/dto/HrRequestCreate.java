@@ -1,15 +1,10 @@
 package ru.hr.backend.hr.dto;
 
-import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Pattern;
-import jakarta.validation.constraints.Positive;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import ru.hr.backend.hr.entity.HrRequestType;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 
 public class HrRequestCreate {
     @NotNull(message = "Тип кадровой заявки обязателен")
@@ -56,34 +51,53 @@ public class HrRequestCreate {
     @Size(max = 100, message = "График работы не должен превышать 100 символов")
     private String workSchedule;
 
+    private BigDecimal salary;
+
     public HrRequestType getType() { return type; }
     public void setType(HrRequestType type) { this.type = type; }
+
     public Long getEmployeeId() { return employeeId; }
     public void setEmployeeId(Long employeeId) { this.employeeId = employeeId; }
+
     public Long getDepartmentId() { return departmentId; }
     public void setDepartmentId(Long departmentId) { this.departmentId = departmentId; }
+
     public Long getPositionId() { return positionId; }
     public void setPositionId(Long positionId) { this.positionId = positionId; }
+
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
+
     public LocalDate getStartDate() { return startDate; }
     public void setStartDate(LocalDate startDate) { this.startDate = startDate; }
+
     public LocalDate getEndDate() { return endDate; }
     public void setEndDate(LocalDate endDate) { this.endDate = endDate; }
+
     public String getLastName() { return lastName; }
     public void setLastName(String lastName) { this.lastName = lastName; }
+
     public String getFirstName() { return firstName; }
     public void setFirstName(String firstName) { this.firstName = firstName; }
+
     public String getMiddleName() { return middleName; }
     public void setMiddleName(String middleName) { this.middleName = middleName; }
+
     public LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+
     public String getEmail() { return email; }
     public void setEmail(String email) { this.email = email; }
+
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
+
+    public BigDecimal getSalary() { return salary; }
+    public void setSalary(BigDecimal salary) { this.salary = salary; }
+
     public String getWorkSchedule() { return workSchedule; }
     public void setWorkSchedule(String workSchedule) { this.workSchedule = workSchedule; }
 }

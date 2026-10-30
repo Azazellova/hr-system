@@ -9,5 +9,4 @@ public interface PositionRepository extends JpaRepository<Position, Long> {
     List<Position> findByDepartmentId(Long departmentId);
     boolean existsByNameIgnoreCaseAndDepartmentId(String name, Long departmentId);
     boolean existsByDepartmentId(Long departmentId);
-    boolean existsByEmployeeId(Long employeeId);
 }

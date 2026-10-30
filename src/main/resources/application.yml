@@ -8,7 +8,19 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
 
 
 server:
   port: 8080
+
+company:
+  name: 'ООО "Вектор"'
+accounting:
+  mock-salaries: "{'1': 220000, '2': 165000, '3': 140000, 
+                  '4': 115000, '5': 170000, '6': 130000, 
+                  '7': 110000, '8': 145000, '9': 105000, 
+                  '10': 95000, '11': 90000, '12': 85000,
+                  '13': 125000, '14': 100000, '15': 180000}"

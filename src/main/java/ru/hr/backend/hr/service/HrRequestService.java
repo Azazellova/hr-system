@@ -30,19 +30,22 @@ public class HrRequestService {
     private final OrganizationService organizationService;
     private final PersonnelService personnelService;
     private final HrRequestStrategyFactory strategyFactory;
+    private final HiringDocumentCoordinator hiringDocuments;
 
     public HrRequestService(
             HrRequestRepository repository,
             EmployeeService employeeService,
             OrganizationService organizationService,
             PersonnelService personnelService,
-            HrRequestStrategyFactory strategyFactory
+            HrRequestStrategyFactory strategyFactory,
+            HiringDocumentCoordinator hiringDocuments
     ) {
         this.repository = repository;
         this.employeeService = employeeService;
         this.organizationService = organizationService;
         this.personnelService = personnelService;
         this.strategyFactory = strategyFactory;
+        this.hiringDocuments = hiringDocuments;
     }
 
     @Transactional
@@ -88,7 +91,7 @@ public class HrRequestService {
             }
         }
         request.setReason(input.getReason().trim());
-        request.setStartDate(input.getStartDate());
+        request.setStartDate(input.getStartDate() == null && input.getType() == HrRequestType.HIRING ? LocalDate.now() : input.getStartDate());
         request.setEndDate(input.getEndDate());
         request.setStatus(HrRequestStatus.PENDING);
 
@@ -268,6 +271,10 @@ public class HrRequestService {
                 strategyFactory.getStrategy(request.getType());
 
         strategy.approve(request);
+
+        if (request.getType() == HrRequestType.HIRING) {
+            hiringDocuments.createDocuments(request);
+        }
 
         request.setStatus(HrRequestStatus.COMPLETED);
 
